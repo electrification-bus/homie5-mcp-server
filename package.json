@@ -1,0 +1,33 @@
+{
+  "name": "homie-mcp-server",
+  "version": "1.0.0",
+  "description": "An MCP server for Homie 5 smart home devices over MQTT",
+  "type": "module",
+  "main": "build/index.js",
+  "bin": {
+    "homie-mcp-server": "./build/index.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "watch": "tsc --watch",
+    "start": "node build/index.js"
+  },
+  "keywords": [
+    "mcp",
+    "mqtt",
+    "homie",
+    "smart-home"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.0.4",
+    "express": "^4.21.1",
+    "mqtt": "^5.10.1"
+  },
+  "devDependencies": {
+    "@types/express": "^5.0.0",
+    "@types/node": "^22.10.2",
+    "typescript": "^5.7.2"
+  }
+}
