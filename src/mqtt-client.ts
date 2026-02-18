@@ -5,8 +5,6 @@ export type MessageHandler = (topic: string, payload: Buffer) => void;
 export interface MqttConnectionOptions {
   brokerUrl: string;
   clientId?: string;
-  username?: string;
-  password?: string;
 }
 
 export class MqttClientManager {
@@ -18,36 +16,39 @@ export class MqttClientManager {
   }
 
   async connect(options: MqttConnectionOptions): Promise<void> {
-    if (this.client?.connected) {
-      return;
+    // Disconnect existing connection first
+    if (this.client) {
+      await this.disconnect();
     }
 
+    const defaultClientId = `homie-mcp-${Math.random().toString(36).slice(2, 8)}`;
     const mqttOptions: mqtt.IClientOptions = {
-      clientId: options.clientId ?? "homie-mcp-server",
+      clientId: options.clientId ?? defaultClientId,
     };
-    if (options.username) mqttOptions.username = options.username;
-    if (options.password) mqttOptions.password = options.password;
 
     this.client = mqtt.connect(options.brokerUrl, mqttOptions);
 
+    // Permanent handlers
+    this.client.on("message", (topic, payload) => {
+      this.messageHandler(topic, payload);
+    });
+    this.client.on("error", (error) => {
+      console.error(`MQTT error: ${error.message}`);
+    });
+    this.client.on("reconnect", () => {
+      console.error("MQTT reconnecting...");
+    });
+
+    // Wait for initial connection
     return new Promise((resolve, reject) => {
       const timeout = setTimeout(() => {
         reject(new Error("MQTT connection timeout after 10 seconds"));
       }, 10000);
 
-      this.client!.on("connect", () => {
+      this.client!.once("connect", () => {
         clearTimeout(timeout);
         console.error(`Connected to MQTT broker at ${options.brokerUrl}`);
         resolve();
-      });
-
-      this.client!.on("error", (error) => {
-        clearTimeout(timeout);
-        reject(error);
-      });
-
-      this.client!.on("message", (topic, payload) => {
-        this.messageHandler(topic, payload);
       });
     });
   }

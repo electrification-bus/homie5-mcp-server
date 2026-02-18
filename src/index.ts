@@ -9,31 +9,29 @@ import {
 } from "@modelcontextprotocol/sdk/types.js";
 import express from "express";
 
-import { TOOLS } from "./tools.js";
+import { TOOLS, CONNECT_TOOL } from "./tools.js";
 import { MqttClientManager } from "./mqtt-client.js";
 import { HomieDeviceStore } from "./homie-device-store.js";
 import { createHandlers } from "./handlers.js";
 
 const BROKER_URL = process.env.HOMIE_BROKER_URL;
-const USERNAME = process.env.HOMIE_USERNAME;
-const PASSWORD = process.env.HOMIE_PASSWORD;
-const CLIENT_ID = process.env.HOMIE_CLIENT_ID ?? "homie-mcp-server";
+const CLIENT_ID = process.env.HOMIE_CLIENT_ID; // undefined = auto-generated in MqttClientManager
 const DOMAIN = process.env.HOMIE_DOMAIN ?? "homie";
 const SSE_PORT = process.env.HOMIE_SSE_PORT
   ? parseInt(process.env.HOMIE_SSE_PORT, 10)
   : null;
 
-if (!BROKER_URL) {
-  console.error("HOMIE_BROKER_URL environment variable is required.");
-  process.exit(1);
-}
+const connectEnabled = !BROKER_URL;
 
 // MQTT + Homie store setup
 const mqttClient = new MqttClientManager((topic, payload) => {
   store.handleMessage(topic, payload);
 });
 const store = new HomieDeviceStore(DOMAIN, mqttClient);
-const handleToolCall = createHandlers(store, mqttClient, DOMAIN);
+const handleToolCall = createHandlers(store, mqttClient, DOMAIN, CLIENT_ID, connectEnabled);
+
+// Build tool list: include connect tool only when no env var broker is configured
+const allTools = connectEnabled ? [CONNECT_TOOL, ...TOOLS] : TOOLS;
 
 // MCP server
 const server = new Server(
@@ -42,7 +40,7 @@ const server = new Server(
 );
 
 server.setRequestHandler(ListToolsRequestSchema, async () => ({
-  tools: TOOLS,
+  tools: allTools,
 }));
 
 server.setRequestHandler(CallToolRequestSchema, async (request) => {
@@ -62,20 +60,13 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
   }
 });
 
-async function connectAndDiscover() {
-  await mqttClient.connect({
-    brokerUrl: BROKER_URL!,
-    clientId: CLIENT_ID,
-    username: USERNAME,
-    password: PASSWORD,
-  });
-  await store.startDiscovery();
-  console.error("Homie device discovery started.");
-}
-
 async function main() {
-  // Connect to MQTT and start discovery before accepting MCP requests
-  await connectAndDiscover();
+  // If broker URL is pre-configured, connect and discover on startup
+  if (BROKER_URL) {
+    await mqttClient.connect({ brokerUrl: BROKER_URL, clientId: CLIENT_ID });
+    await store.startDiscovery();
+    console.error("Homie device discovery started.");
+  }
 
   if (SSE_PORT) {
     // SSE transport

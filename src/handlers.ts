@@ -15,13 +15,47 @@ function err(text: string) {
 export function createHandlers(
   store: HomieDeviceStore,
   mqttClient: MqttClientManager,
-  domain: string
+  domain: string,
+  clientId: string | undefined,
+  connectEnabled: boolean
 ) {
+  async function connectAndDiscover(brokerUrl: string): Promise<string> {
+    store.clear();
+    await mqttClient.connect({ brokerUrl, clientId });
+    await store.startDiscovery();
+    // Give retained messages a moment to arrive
+    await new Promise((resolve) => setTimeout(resolve, 2000));
+    const count = store.devices.size;
+    return `Connected to ${brokerUrl}. Discovered ${count} device${count !== 1 ? "s" : ""}.`;
+  }
+
   return async function handleToolCall(
     name: string,
     args: Record<string, unknown>
   ) {
     switch (name) {
+      case "homie_connect": {
+        if (!connectEnabled) {
+          return err(
+            "Connect tool is not available. The server is pre-configured via HOMIE_BROKER_URL."
+          );
+        }
+
+        const brokerUrl = args.broker_url as string;
+        if (!brokerUrl) {
+          return err("broker_url is required.");
+        }
+
+        try {
+          const msg = await connectAndDiscover(brokerUrl);
+          return ok(msg);
+        } catch (e) {
+          return err(
+            `Failed to connect: ${e instanceof Error ? e.message : String(e)}`
+          );
+        }
+      }
+
       case "homie_get_devices": {
         const includeAll = (args.include_all as boolean) ?? false;
 

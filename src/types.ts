@@ -1,4 +1,4 @@
-export type DeviceState = "init" | "ready" | "sleeping" | "disconnected" | "lost" | "alert";
+export type DeviceState = "init" | "ready" | "sleeping" | "disconnected" | "lost";
 
 export interface PropertyDescription {
   name?: string;

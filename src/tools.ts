@@ -1,5 +1,22 @@
 import { Tool } from "@modelcontextprotocol/sdk/types.js";
 
+export const CONNECT_TOOL: Tool = {
+  name: "homie_connect",
+  description:
+    "Connect to an MQTT broker running Homie 5 devices. If already connected, disconnects first and reconnects to the new broker. Credentials can be included in the URL (e.g. mqtt://user:pass@host:1883).",
+  inputSchema: {
+    type: "object",
+    properties: {
+      broker_url: {
+        type: "string",
+        description:
+          "MQTT broker URL (e.g. mqtt://localhost:1883 or mqtt://user:pass@broker:1883)",
+      },
+    },
+    required: ["broker_url"],
+  },
+};
+
 export const TOOLS: Tool[] = [
   {
     name: "homie_get_devices",
@@ -11,7 +28,7 @@ export const TOOLS: Tool[] = [
         include_all: {
           type: "boolean",
           description:
-            "If true, also include devices in init, disconnected, lost, and alert states. Default is false.",
+            "If true, also include devices in init, disconnected, and lost states. Default is false.",
         },
       },
     },

@@ -31,9 +31,14 @@ export class HomieDeviceStore {
 
     // $state topic: {domain}/5/{deviceId}/$state
     if (parts.length === 2 && parts[1] === "$state") {
-      const state = payload.toString() as DeviceState;
+      const state = payload.toString();
+      if (!state) {
+        // Empty payload = retained message cleared = device removed
+        this.removeDevice(deviceId);
+        return;
+      }
       const device = this.getOrCreateDevice(deviceId);
-      device.state = state;
+      device.state = state as DeviceState;
       return;
     }
 
@@ -85,6 +90,19 @@ export class HomieDeviceStore {
     return device;
   }
 
+  private async removeDevice(deviceId: string): Promise<void> {
+    this.devices.delete(deviceId);
+    if (this.subscribedDevices.has(deviceId)) {
+      this.subscribedDevices.delete(deviceId);
+      try {
+        await this.mqttClient.unsubscribe(`${this.domain}/5/${deviceId}/+/+`);
+      } catch {
+        // ignore unsubscribe errors during cleanup
+      }
+    }
+    console.error(`Device removed: ${deviceId}`);
+  }
+
   private buildNodesFromDescription(
     device: HomieDevice,
     desc: DeviceDescription
@@ -127,6 +145,11 @@ export class HomieDeviceStore {
       console.error(`Failed to subscribe to ${topic}:`, e);
       this.subscribedDevices.delete(deviceId);
     }
+  }
+
+  clear(): void {
+    this.devices.clear();
+    this.subscribedDevices.clear();
   }
 
   async startDiscovery(): Promise<void> {
