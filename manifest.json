@@ -1,0 +1,49 @@
+{
+  "manifest_version": "0.3",
+  "name": "homie-mcp-server",
+  "display_name": "Homie MCP Server",
+  "version": "0.1.0",
+  "description": "An MCP server for Homie 5 smart home devices over MQTT",
+  "author": {
+    "name": "homie-mcp-server contributors"
+  },
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/thijsputman/homie-mcp-server"
+  },
+  "keywords": ["mcp", "mqtt", "homie", "smart-home"],
+  "server": {
+    "type": "node",
+    "entry_point": "build/index.js",
+    "mcp_config": {
+      "command": "node",
+      "args": ["${__dirname}/build/index.js"],
+      "env": {
+        "HOMIE_BROKER_URL": "${user_config.broker_url}",
+        "HOMIE_DOMAIN": "${user_config.domain}"
+      }
+    }
+  },
+  "compatibility": {
+    "platforms": ["darwin", "win32", "linux"],
+    "runtimes": {
+      "node": ">=18.0.0"
+    }
+  },
+  "user_config": {
+    "broker_url": {
+      "type": "string",
+      "title": "MQTT Broker URL",
+      "description": "MQTT broker URL (e.g. mqtt://user:pass@host:1883)",
+      "required": false
+    },
+    "domain": {
+      "type": "string",
+      "title": "Homie Domain",
+      "description": "Homie topic domain prefix",
+      "required": false,
+      "default": "homie"
+    }
+  }
+}

@@ -40,7 +40,7 @@ const allTools = connectEnabled ? [CONNECT_TOOL, ...TOOLS] : TOOLS;
 
 // MCP server
 const server = new Server(
-  { name: "homie-mcp-server", version: "1.0.0" },
+  { name: "homie-mcp-server", version: "0.1.0" },
   { capabilities: { tools: {} } }
 );
 

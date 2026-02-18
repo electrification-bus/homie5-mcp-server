@@ -1,6 +1,6 @@
 {
   "name": "homie-mcp-server",
-  "version": "1.0.0",
+  "version": "0.1.0",
   "description": "An MCP server for Homie 5 smart home devices over MQTT",
   "type": "module",
   "main": "build/index.js",
