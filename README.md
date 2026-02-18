@@ -33,6 +33,10 @@ Credentials are included in the broker URL (e.g. `mqtt://user:pass@broker:1883`)
 | `HOMIE_CLIENT_ID` | MQTT client ID | No | `homie-mcp-{random}` |
 | `HOMIE_DOMAIN` | Homie topic domain prefix | No | `homie` |
 | `HOMIE_SSE_PORT` | If set, run SSE transport on this port instead of stdio | No | — |
+| `HOMIE_TLS_CERT` | Path to PEM certificate file for HTTPS | No | — |
+| `HOMIE_TLS_KEY` | Path to PEM private key file for HTTPS | No | — |
+
+When using SSE transport, the server always runs over HTTPS. If both `HOMIE_TLS_CERT` and `HOMIE_TLS_KEY` are set, those certificates are used. If neither is set, a self-signed certificate is generated automatically. Setting only one of the two is an error.
 
 ## Usage
 
@@ -56,13 +60,19 @@ The LLM will need to call `homie_connect` before it can interact with devices.
 HOMIE_BROKER_URL=mqtt://localhost:1883 node build/index.js
 ```
 
-### SSE transport
+### SSE transport (self-signed cert)
 
 ```bash
 HOMIE_BROKER_URL=mqtt://localhost:1883 HOMIE_SSE_PORT=3000 node build/index.js
 ```
 
-Connect to `http://localhost:3000/sse` for the SSE stream, POST to `/messages` for requests.
+### SSE transport (custom certs)
+
+```bash
+HOMIE_BROKER_URL=mqtt://localhost:1883 HOMIE_SSE_PORT=3000 HOMIE_TLS_CERT=cert.pem HOMIE_TLS_KEY=key.pem node build/index.js
+```
+
+Connect to `https://localhost:3000/sse` for the SSE stream, POST to `/messages` for requests.
 
 ### Docker
 
@@ -77,6 +87,18 @@ To use SSE transport:
 
 ```bash
 docker run --init -e HOMIE_BROKER_URL=mqtt://broker:1883 -e HOMIE_SSE_PORT=3000 -p 3000:3000 homie-mcp-server
+```
+
+With custom certificates, mount them into the container:
+
+```bash
+docker run --init \
+  -e HOMIE_BROKER_URL=mqtt://broker:1883 \
+  -e HOMIE_SSE_PORT=3000 \
+  -e HOMIE_TLS_CERT=/certs/cert.pem \
+  -e HOMIE_TLS_KEY=/certs/key.pem \
+  -v /path/to/certs:/certs:ro \
+  -p 3000:3000 homie-mcp-server
 ```
 
 ## Tools

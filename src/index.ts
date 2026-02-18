@@ -7,7 +7,10 @@ import {
   CallToolRequestSchema,
   ListToolsRequestSchema,
 } from "@modelcontextprotocol/sdk/types.js";
+import https from "node:https";
+import { readFileSync } from "node:fs";
 import express from "express";
+import selfsigned from "selfsigned";
 
 import { TOOLS, CONNECT_TOOL } from "./tools.js";
 import { MqttClientManager } from "./mqtt-client.js";
@@ -20,6 +23,8 @@ const DOMAIN = process.env.HOMIE_DOMAIN ?? "homie";
 const SSE_PORT = process.env.HOMIE_SSE_PORT
   ? parseInt(process.env.HOMIE_SSE_PORT, 10)
   : null;
+const TLS_CERT = process.env.HOMIE_TLS_CERT;
+const TLS_KEY = process.env.HOMIE_TLS_KEY;
 
 const connectEnabled = !BROKER_URL;
 
@@ -86,8 +91,28 @@ async function main() {
       }
     });
 
-    app.listen(SSE_PORT, () => {
-      console.error(`Homie MCP Server running on SSE port ${SSE_PORT}`);
+    let tlsOptions: https.ServerOptions;
+
+    if (TLS_CERT && TLS_KEY) {
+      tlsOptions = {
+        cert: readFileSync(TLS_CERT),
+        key: readFileSync(TLS_KEY),
+      };
+      console.error("Using provided TLS certificates");
+    } else if (!TLS_CERT && !TLS_KEY) {
+      const attrs = [{ name: "commonName", value: "localhost" }];
+      const pems = await selfsigned.generate(attrs, { algorithm: "sha256" });
+      tlsOptions = { cert: pems.cert, key: pems.private };
+      console.error("Using auto-generated self-signed certificate");
+    } else {
+      console.error(
+        "Error: Both HOMIE_TLS_CERT and HOMIE_TLS_KEY must be set, or neither"
+      );
+      process.exit(1);
+    }
+
+    https.createServer(tlsOptions, app).listen(SSE_PORT, () => {
+      console.error(`Homie MCP Server running on HTTPS/SSE port ${SSE_PORT}`);
     });
   } else {
     // Stdio transport (default)
