@@ -1,0 +1,69 @@
+name: Sync upstream main (mirror-admin)
+
+on:
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+jobs:
+  mirror:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout downstream repo (mirror-admin)
+        uses: actions/checkout@v4
+        with:
+          ref: mirror-admin
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Configure git identity
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Fetch upstream main
+        run: |
+          set -euo pipefail
+          git remote remove upstream 2>/dev/null || true
+          git remote add upstream \
+            "https://github.com/Tieske/homie5-mcp-server.git"
+          git fetch --prune upstream main
+
+      - name: Mirror upstream/main into downstream main (preserve dispatcher)
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+
+          # --- preserve dispatcher workflow from mirror-admin ---
+          TMPDIR="$(mktemp -d)"
+          mkdir -p "${TMPDIR}/.github/workflows"
+
+          git show mirror-admin:.github/workflows/dispatch-mirror.yml \
+            > "${TMPDIR}/.github/workflows/dispatch-mirror.yml"
+
+          # --- reset main to upstream/main ---
+          git checkout -B main upstream/main
+
+          # --- restore dispatcher workflow onto main ---
+          mkdir -p .github/workflows
+          cp "${TMPDIR}/.github/workflows/dispatch-mirror.yml" \
+             .github/workflows/dispatch-mirror.yml
+
+          git add .github/workflows/dispatch-mirror.yml
+
+          if ! git diff --cached --quiet; then
+            git commit -m "Preserve mirror dispatcher workflow on main"
+          fi
+
+          # --- authenticated push to downstream ---
+          git remote set-url origin \
+            "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
+
+          git push origin main --force
+
+      - name: Show final downstream main ref
+        run: |
+          git ls-remote origin refs/heads/main

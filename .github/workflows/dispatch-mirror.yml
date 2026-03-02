@@ -1,0 +1,26 @@
+name: Dispatch mirror job
+
+on:
+  schedule:
+    - cron: "37 * * * *"   # hourly
+  workflow_dispatch: {}
+
+permissions:
+  actions: write
+  contents: read
+
+jobs:
+  dispatch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger mirror workflow on mirror-admin
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          WORKFLOW_FILE="sync-upstream-main.yml"
+          REF="mirror-admin"
+
+          gh api -X POST \
+            "repos/${GITHUB_REPOSITORY}/actions/workflows/${WORKFLOW_FILE}/dispatches" \
+            -f ref="${REF}"
