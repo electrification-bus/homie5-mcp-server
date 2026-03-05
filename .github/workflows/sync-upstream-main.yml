@@ -65,5 +65,6 @@ jobs:
           git push origin main --force
 
       - name: Show final downstream main ref
+        continue-on-error: true
         run: |
           git ls-remote origin refs/heads/main
