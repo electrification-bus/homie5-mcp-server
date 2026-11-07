@@ -1,0 +1,36 @@
+name: Dispatch mirror job
+
+on:
+  schedule:
+    - cron: "37 * * * *"   # hourly
+  workflow_dispatch: {}
+
+permissions:
+  actions: write
+  contents: read
+
+jobs:
+  dispatch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger mirror workflow on mirror-admin
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          WORKFLOW_FILE="sync-upstream-main.yml"
+          REF="mirror-admin"
+
+          for attempt in 1 2 3; do
+            if gh api -X POST \
+              "repos/${GITHUB_REPOSITORY}/actions/workflows/${WORKFLOW_FILE}/dispatches" \
+              -f ref="${REF}"; then
+              echo "Dispatch succeeded on attempt ${attempt}"
+              exit 0
+            fi
+            echo "Attempt ${attempt} failed, retrying in 10s..."
+            sleep 10
+          done
+
+          echo "All dispatch attempts failed"
+          exit 1
